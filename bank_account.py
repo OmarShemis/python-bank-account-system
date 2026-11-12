@@ -1,60 +1,75 @@
-class BalanceException(Exception):
-    pass
+"""Educational account simulation with validated decimal transactions."""
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
+
+class BalanceException(ValueError):
+    """A debit would exceed available funds."""
+
+def money(value, *, allow_zero=False):
+    try:
+        result=Decimal(str(value))
+        if not result.is_finite() or result < 0 or (not allow_zero and result == 0) or result > Decimal("1e15"):
+            raise ValueError("Amount must be positive, finite, and at most 1e15.")
+        result=result.quantize(Decimal("0.01"),rounding=ROUND_HALF_UP)
+        if not allow_zero and result == 0:
+            raise ValueError("Amount rounds to zero.")
+        return result
+    except InvalidOperation as error:
+        raise ValueError("Invalid monetary amount.") from error
 
 class BankAccount:
-    def __init__ (self, initialAmount, acctName):
-        self.balance = initialAmount
-        self.name = acctName
-        print(f"\nAccount '{self.name}' created.\nBalance = ${self.balance:.2f}")
+    def __init__(self, initial_amount, account_name):
+        if not account_name.strip():
+            raise ValueError("Account name is required.")
+        self.balance=money(initial_amount,allow_zero=True)
+        self.name=account_name.strip()
 
-    def getBalance(self):
-        print(f"\nAccount '{self.name}' balance is ${self.balance:.2f}")
+    def get_balance(self):
+        return self.balance
 
     def deposit(self, amount):
-        self.balance = self.balance + amount
-        print(f"\nDeposit Complete, you have deposited {amount} and your current balance is ${self.balance}")
+        self.balance += self.credit_amount(money(amount))
+        return self.balance
 
-    def viableTransaction(self, amount):
-        if self.balance >= amount:
-            return
-        else:
-            raise BalanceException(f"\nSorry account '{self.name}' only has a balance of {self.balance:.2f}")
+    def credit_amount(self, amount):
+        return amount
+
+    def debit_amount(self, amount):
+        return amount
+
+    def viable_transaction(self, amount):
+        debit=self.debit_amount(money(amount))
+        if debit > self.balance:
+            raise BalanceException("Insufficient funds, including any withdrawal fee.")
+        return debit
 
     def withdraw(self, amount):
-        try:
-            self.viableTransaction(amount)
-            self.balance = self.balance - amount
-            print("\nWithdraw Complete ✅")
-            self.getBalance()
-        except BalanceException as error:
-            print(f"Withdraw interrupted: ❌ {error}")
+        debit=self.viable_transaction(amount)
+        self.balance -= debit
+        return self.balance
 
     def transfer(self, amount, account):
-        try:
-            print("\n*********\n\nBeginning Transfer......🚀")
-            self.viableTransaction(amount)
-            self.withdraw(amount)
-            account.deposit(amount)
-            print("\nTransfer Complete! ✅")
-        except BalanceException as error:
-            print(f"\nTransfer Interrupted: ❌ {error}")
+        if not isinstance(account,BankAccount) or account is self:
+            raise ValueError("Choose a different valid destination account.")
+        amount=money(amount)
+        debit=self.viable_transaction(amount)
+        credit=account.credit_amount(amount)
+        # Compute all fallible values before either balance changes.
+        sender_balance=self.balance-debit
+        recipient_balance=account.balance+credit
+        self.balance,account.balance=sender_balance,recipient_balance
 
-class InterestRewardsAcct(BankAccount):
-    def deposit(self, amount):
-        self.balance = self.balance + (amount * 1.05) #interest rate of 5%
-        print("\nDeposit Complete ✅")
-        self.getBalance()
+    # Original tutorial-style names retained for existing callers.
+    getBalance=get_balance
+    viableTransaction=viable_transaction
 
-class SavingsAcct(InterestRewardsAcct):
-    def __init__(self, initialAmount, acctName):
-        super().__init__(initialAmount, acctName)
-        self.fee = 5
+class InterestRewardsAccount(BankAccount):
+    def credit_amount(self,amount):
+        return (amount*Decimal("1.05")).quantize(Decimal("0.01"),rounding=ROUND_HALF_UP)
 
-    def withdraw(self, amount):
-        try:
-            self.viableTransaction(amount + self.fee)
-            self.balance = self.balance - (amount + self.fee)
-            print("\nWithdraw Complete ✅")
-            self.getBalance()
-        except BalanceException as error:
-            print(f"Withdraw interrupted: ❌ {error}")
+class SavingsAccount(InterestRewardsAccount):
+    fee=Decimal("5.00")
+    def debit_amount(self,amount):
+        return amount+self.fee
+
+InterestRewardsAcct=InterestRewardsAccount
+SavingsAcct=SavingsAccount
