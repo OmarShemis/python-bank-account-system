@@ -1,4 +1,8 @@
-# Python Bank Account System
+![Account Simulation — Learning objects through balances and transfers.](assets/header.svg)
+
+[← Omar’s portfolio](https://github.com/OmarShemis) · [MIT license](LICENSE)
+
+# Account Simulation
 
 An educational object-oriented account simulation with decimal balances, withdrawals, transfers, savings fees and a 5% deposit reward.
 
@@ -18,3 +22,7 @@ Amounts are finite, positive Decimal values rounded half-up to cents. Failed tra
 Run `python -m unittest discover -s tests -v` (Python 3.11+; no third-party dependencies). Tests cover negative/non-finite inputs, failed transfers, fees, rewards and decimal arithmetic.
 
 This is a learning simulation, not banking software: no authentication, persistence, concurrent transaction protection or regulatory implementation. Deposit rewards are a deliberately simplified exercise, not real interest accounting.
+
+---
+
+Built by [Omar Shemis](https://github.com/OmarShemis) · [Explore more projects](https://github.com/OmarShemis?tab=repositories)
